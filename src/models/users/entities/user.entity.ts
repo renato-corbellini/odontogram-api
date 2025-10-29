@@ -17,23 +17,23 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({
-    type: 'text',
-    nullable: false,
-  })
-  firstName: string;
+  // @Column({
+  //   type: 'text',
+  //   nullable: false,
+  // })
+  // firstName: string;
 
-  @Column({
-    type: 'text',
-    nullable: false,
-  })
-  lastName: string;
+  // @Column({
+  //   type: 'text',
+  //   nullable: false,
+  // })
+  // lastName: string;
 
-  @Column({
-    type: 'date',
-    nullable: false,
-  })
-  dob: Date;
+  // @Column({
+  //   type: 'date',
+  //   nullable: false,
+  // })
+  // dob: Date;
 
   @Column({
     type: 'text',

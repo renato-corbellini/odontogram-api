@@ -1,5 +1,4 @@
 import {
-  IsDateString,
   IsEmail,
   IsString,
   Matches,
@@ -8,17 +7,17 @@ import {
 } from 'class-validator';
 
 export class CreateUserHttpDto {
-  @IsString()
-  @MinLength(2)
-  readonly firstName: string;
+  // @IsString()
+  // @MinLength(2)
+  // readonly firstName: string;
 
-  @IsString()
-  @MinLength(2)
-  readonly lastName: string;
+  // @IsString()
+  // @MinLength(2)
+  // readonly lastName: string;
 
-  @IsString()
-  @IsDateString()
-  readonly dob: string;
+  // @IsString()
+  // @IsDateString()
+  // readonly dob: string;
 
   @IsString()
   @MinLength(5)

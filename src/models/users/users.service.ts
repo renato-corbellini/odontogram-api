@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { hash } from 'src/common/bcrypt-adapter';
 import { Repository } from 'typeorm';
+import { CryptographyService } from '../../common/cryptography/cryptography.service';
 import { CreateUserDto } from './dto/';
 import { FindByPropertiesDto } from './dto/find-by-properties.dto';
 import { User } from './entities/user.entity';
@@ -11,6 +11,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly cryptographyService: CryptographyService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<{ id: string }> {
@@ -18,7 +19,7 @@ export class UsersService {
 
     const user = this.usersRepository.create({
       ...userDetails,
-      password: hash(password),
+      password: this.cryptographyService.hash(password),
     });
 
     await this.usersRepository.save(user);
@@ -35,6 +36,21 @@ export class UsersService {
       where: findByPropertiesDto,
       select: ['id', 'username', 'email', 'password'],
     });
+  }
+
+  async updatePassword({
+    userId,
+    password,
+  }: {
+    userId: string;
+    password: string;
+  }) {
+    await this.usersRepository.update(
+      { id: userId },
+      {
+        password: this.cryptographyService.hash(password),
+      },
+    );
   }
 
   // checkAuthStatus(user: User) {

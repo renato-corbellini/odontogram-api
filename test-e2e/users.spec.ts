@@ -32,9 +32,9 @@ describe('UsersController (e2e)', () => {
   describe('/users (POST)', () => {
     it('should create user when valid DTO is provided', async () => {
       const userData: CreateUserHttpDto = {
-        firstName: 'John',
-        lastName: 'Doe',
-        dob: '2000-02-25',
+        // firstName: 'John',
+        // lastName: 'Doe',
+        // dob: '2000-02-25',
         email: 'john.doe@example.com',
         username: 'johndoe',
         password: 'Password123',
@@ -52,10 +52,11 @@ describe('UsersController (e2e)', () => {
         id: response.body.id,
       });
       expect(dbUser).toBeInstanceOf(User);
-      expect(dbUser?.firstName).toBe(userData.firstName);
-      expect(dbUser?.lastName).toBe(userData.lastName);
-      expect(dbUser?.dob).toBe(userData.dob);
+      // expect(dbUser?.firstName).toBe(userData.firstName);
+      // expect(dbUser?.lastName).toBe(userData.lastName);
+      // expect(dbUser?.dob).toBe(userData.dob);
       expect(dbUser?.email).toBe(userData.email);
+      expect(dbUser?.username).toBe(userData.username);
     });
   });
 });
