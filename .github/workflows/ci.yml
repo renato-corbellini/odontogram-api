@@ -44,7 +44,7 @@ jobs:
         run: pnpm install
 
       - name: Run unit and e2e tests
-        run: pnpm test
+        run: pnpm jest && pnpm jest --config ./test-e2e/jest.json --runInBand --globalSetup= --globalTeardown=
         env:
           DB_HOST: localhost
           DB_PORT: 5432
