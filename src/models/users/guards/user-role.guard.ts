@@ -35,7 +35,7 @@ export class UserRoleGuard implements CanActivate {
     }
 
     throw new ForbiddenException(
-      `User ${user.firstName} ${user.lastName} does not have the required roles: ${validRoles.join(
+      `User ${user.id} does not have the required roles: ${validRoles.join(
         ', ',
       )}`,
     );

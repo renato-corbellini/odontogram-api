@@ -1,9 +1,9 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { useContainer } from 'class-validator';
 import { LoginHttpDto } from 'src/auth/dto';
 import { CryptographyService } from 'src/common/cryptography/cryptography.service';
-import { UuidService } from 'src/common/uuid/uuid.service';
 import { User } from 'src/models/users/entities/user.entity';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
@@ -12,8 +12,8 @@ import { DbUtil } from './utils/db.util';
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
   let dbUtil: DbUtil;
-  let uuidService: UuidService;
   let cryptographyService: CryptographyService;
+  let jwtService: JwtService;
 
   const mockEmailIdentifier = 'john.doe@example.com';
   const mockUsernameIdentifier = 'johndoe';
@@ -32,8 +32,8 @@ describe('AuthController (e2e)', () => {
     await app.init();
 
     dbUtil = new DbUtil(app);
-    uuidService = app.get<UuidService>(UuidService);
     cryptographyService = app.get<CryptographyService>(CryptographyService);
+    jwtService = app.get<JwtService>(JwtService);
   });
 
   afterAll(async () => {
@@ -45,22 +45,15 @@ describe('AuthController (e2e)', () => {
       await dbUtil.clearDb();
     });
 
-    const testCases = [
-      {
-        identifier: mockEmailIdentifier,
-        password: mockPassword,
-      },
-      {
-        identifier: mockUsernameIdentifier,
-        password: mockPassword,
-      },
-    ];
-
-    testCases.forEach(({ identifier, password }) => {
-      it('should return 401 when user provided does not exist', async () => {
+    it.each([
+      { idName: 'email', identifier: mockEmailIdentifier },
+      { idName: 'username', identifier: mockUsernameIdentifier },
+    ])(
+      'should return 401 for non-existent user with $idName',
+      async ({ identifier }) => {
         const loginDto: LoginHttpDto = {
           identifier,
-          password,
+          password: mockPassword,
         };
 
         const response = await request(app.getHttpServer())
@@ -68,22 +61,21 @@ describe('AuthController (e2e)', () => {
           .send(loginDto)
           .expect(401);
 
-        expect(response.body).toBeDefined();
         expect(response.body).toMatchObject({
           statusCode: 401,
           message: 'Unauthorized',
         });
-      });
-    });
+      },
+    );
 
-    testCases.forEach(({ identifier, password }) => {
-      it('should return 401 when user exists but invalid credentials are provided', async () => {
-        const hashedPassword = cryptographyService.hash(password);
-
+    it.each([
+      { idName: 'email', identifier: mockEmailIdentifier },
+      { idName: 'username', identifier: mockUsernameIdentifier },
+    ])(
+      'should return 401 for existing user ($idName) with invalid credentials',
+      async ({ identifier }) => {
+        const hashedPassword = cryptographyService.hash(mockPassword);
         await dbUtil.getRepository(User).save({
-          firstName: 'John',
-          lastName: 'Doe',
-          dob: '2000-02-25',
           email: mockEmailIdentifier,
           username: mockUsernameIdentifier,
           password: hashedPassword,
@@ -99,23 +91,22 @@ describe('AuthController (e2e)', () => {
           .send(body)
           .expect(401);
 
-        expect(response.body).toBeDefined();
         expect(response.body).toMatchObject({
           statusCode: 401,
           message: 'Unauthorized',
         });
         expect(response.body.token).not.toBeDefined();
-      });
-    });
+      },
+    );
 
-    testCases.forEach(({ identifier, password }) => {
-      it('should return a token when user exists and valid credentials are provided', async () => {
-        const hashedPassword = cryptographyService.hash(password);
-
+    it.each([
+      { idName: 'email', identifier: mockEmailIdentifier },
+      { idName: 'username', identifier: mockUsernameIdentifier },
+    ])(
+      'should return a token for existing user ($idName) with valid credentials',
+      async ({ identifier }) => {
+        const hashedPassword = cryptographyService.hash(mockPassword);
         await dbUtil.getRepository(User).save({
-          firstName: 'John',
-          lastName: 'Doe',
-          dob: '2000-02-25',
           email: mockEmailIdentifier,
           username: mockUsernameIdentifier,
           password: hashedPassword,
@@ -123,7 +114,7 @@ describe('AuthController (e2e)', () => {
 
         const authData: LoginHttpDto = {
           identifier,
-          password,
+          password: mockPassword,
         };
 
         const response = await request(app.getHttpServer())
@@ -131,39 +122,25 @@ describe('AuthController (e2e)', () => {
           .send(authData)
           .expect(200);
 
-        expect(response.body).toBeDefined();
         expect(response.body.token).toBeDefined();
-      });
-    });
+      },
+    );
   });
 
   describe('/request-password-restore (POST)', () => {
     describe('when user does not exist', () => {
-      const cases = [
-        {
-          identifierName: 'email',
-          identifier: mockEmailIdentifier,
-        },
-        {
-          identifierName: 'username',
-          identifier: mockUsernameIdentifier,
-        },
-      ];
-
-      cases.forEach(({ identifier }) => {
-        it('should return 401 for the provided $identifierName', async () => {
-          const response = await request(app.getHttpServer())
+      it.each([
+        { idName: 'email', identifier: mockEmailIdentifier },
+        { idName: 'username', identifier: mockUsernameIdentifier },
+      ])(
+        'should return 401 for the provided $idName',
+        async ({ identifier }) => {
+          await request(app.getHttpServer())
             .post('/auth/request-password-restore')
             .send({ identifier })
             .expect(401);
-
-          expect(response.body).toBeDefined();
-          expect(response.body).toMatchObject({
-            statusCode: 401,
-            message: 'Unauthorized',
-          });
-        });
-      });
+        },
+      );
     });
 
     describe('when user exists', () => {
@@ -171,9 +148,6 @@ describe('AuthController (e2e)', () => {
         const hashedPassword = cryptographyService.hash(mockPassword);
 
         await dbUtil.getRepository(User).save({
-          firstName: 'John',
-          lastName: 'Doe',
-          dob: '2000-02-25',
           email: mockEmailIdentifier,
           username: mockUsernameIdentifier,
           password: hashedPassword,
@@ -184,56 +158,85 @@ describe('AuthController (e2e)', () => {
         await dbUtil.clearDb();
       });
 
-      const testCases = [
-        {
-          identifierName: 'email',
-          identifier: mockEmailIdentifier,
-        },
-        {
-          identifierName: 'username',
-          identifier: mockUsernameIdentifier,
-        },
-      ];
-
-      testCases.forEach(({ identifier }) => {
-        it('should send restore email and return restore token for the provided $identifierName', async () => {
-          const response = await request(app.getHttpServer())
+      it.each([
+        { idName: 'email', identifier: mockEmailIdentifier },
+        { idName: 'username', identifier: mockUsernameIdentifier },
+      ])(
+        'should send restore email for the provided $idName',
+        async ({ identifier }) => {
+          await request(app.getHttpServer())
             .post('/auth/request-password-restore')
             .send({ identifier })
             .expect(200);
 
           // Todo: check that mock EmailService was called
-
-          expect(response.body).toBeDefined();
-          expect(response.body.restoreToken).toBeDefined();
-        });
-      });
+        },
+      );
     });
   });
 
-  describe('/restore-password/:id (POST)', () => {
-    describe('when userId is not a UUID', () => {
-      it('should return 400', async () => {
-        const response = await request(app.getHttpServer())
-          .post('/auth/restore-password/invalidId')
-          .send({
-            password: mockPassword,
-            confirmPassword: mockPassword,
-          })
-          .expect(400);
-
-        expect(response.body).toBeDefined();
-        expect(response.body).toMatchObject({
-          statusCode: 400,
-          message: 'Validation failed (uuid is expected)',
-        });
-      });
+  describe('/restore-password (POST)', () => {
+    it('should return 401 when no auth token is provided', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/restore-password')
+        .send({})
+        .expect(401);
     });
 
-    describe('when passwords do not match', () => {
-      it('should return 400', async () => {
+    it('should return 401 when an invalid auth token is provided', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/restore-password')
+        .set('Authorization', 'Bearer aninvalidtoken')
+        .send({})
+        .expect(401);
+    });
+
+    it('should return 401 when an expired auth token is provided', async () => {
+      const token = jwtService.sign({ id: 'any-id' }, { expiresIn: '1ms' });
+
+      // Wait for token to expire
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      await request(app.getHttpServer())
+        .post('/auth/restore-password')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ password: '123', confirmPassword: '123' })
+        .expect(401);
+    });
+
+    it('should return 401 when token contains a non-existent user ID', async () => {
+      const nonExistentUserId = '123e4567-e89b-12d3-a456-426614174000';
+      const token = jwtService.sign({ id: nonExistentUserId });
+
+      await request(app.getHttpServer())
+        .post('/auth/restore-password')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ password: mockPassword, confirmPassword: mockPassword })
+        .expect(401);
+    });
+
+    describe('when a valid token is provided', () => {
+      let user: User;
+      let token: string;
+
+      beforeEach(async () => {
+        const hashedPassword = cryptographyService.hash(mockPassword);
+        user = await dbUtil.getRepository(User).save({
+          email: mockEmailIdentifier,
+          username: mockUsernameIdentifier,
+          password: hashedPassword,
+        });
+        token = jwtService.sign({ id: user.id });
+      });
+
+      afterEach(async () => {
+        await dbUtil.clearDb();
+      });
+
+      it('should return 400 when passwords do not match', async () => {
         const response = await request(app.getHttpServer())
-          .post(`/auth/restore-password/${uuidService.generate()}`)
+          .post('/auth/restore-password')
+          .set('Authorization', `Bearer ${token}`)
           .send({
             password: mockPassword,
             confirmPassword: 'invalidPassword123',
@@ -243,59 +246,20 @@ describe('AuthController (e2e)', () => {
         expect(response.body).toBeDefined();
         expect(response.body).toMatchObject({
           statusCode: 400,
-          message: expect.arrayContaining(['Passwords do not match']),
+          message: ['Passwords do not match'],
         });
       });
-    });
 
-    describe('when user does not exist', () => {
-      it('should return 401', async () => {
-        const response = await request(app.getHttpServer())
-          .post(`/auth/restore-password/${uuidService.generate()}`)
+      it('should update the password when valid data is provided', async () => {
+        const newPassword = 'newValidPassword123';
+        await request(app.getHttpServer())
+          .post('/auth/restore-password')
+          .set('Authorization', `Bearer ${token}`)
           .send({
-            password: mockPassword,
-            confirmPassword: mockPassword,
-          })
-          .expect(401);
-
-        expect(response.body).toBeDefined();
-        expect(response.body).toMatchObject({
-          statusCode: 401,
-          message: 'Unauthorized',
-        });
-      });
-    });
-
-    describe('when user exists', () => {
-      let user: User;
-
-      beforeEach(async () => {
-        const hashedPassword = cryptographyService.hash(mockPassword);
-
-        user = await dbUtil.getRepository(User).save({
-          firstName: 'John',
-          lastName: 'Doe',
-          dob: '2000-02-25',
-          email: mockEmailIdentifier,
-          username: mockUsernameIdentifier,
-          password: hashedPassword,
-        });
-      });
-
-      afterEach(async () => {
-        await dbUtil.clearDb();
-      });
-
-      it('should update the password', async () => {
-        const response = await request(app.getHttpServer())
-          .post(`/auth/restore-password/${user.id}`)
-          .send({
-            password: mockPassword,
-            confirmPassword: mockPassword,
+            password: newPassword,
+            confirmPassword: newPassword,
           })
           .expect(200);
-
-        expect(response.body).toBeDefined();
 
         const dbUser = await dbUtil.getRepository(User).findOne({
           where: { id: user.id },
@@ -304,9 +268,9 @@ describe('AuthController (e2e)', () => {
 
         expect(dbUser).toBeDefined();
         expect(dbUser?.password).not.toBe(user.password);
-        expect(
-          cryptographyService.compare(mockPassword, dbUser!.password),
-        ).toBe(true);
+        expect(cryptographyService.compare(newPassword, dbUser!.password)).toBe(
+          true,
+        );
       });
     });
   });

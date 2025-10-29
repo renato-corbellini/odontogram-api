@@ -15,9 +15,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     CommonModule,
     UsersModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '2h' },
+    JwtModule.registerAsync({
+      useFactory: () => ({
+        secret: process.env.JWT_SECRET,
+        signOptions: {
+          expiresIn: '2h', // Default expiration for login
+        },
+      }),
     }),
   ],
   controllers: [AuthController],

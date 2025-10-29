@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class UuidService {
-  generate(): string {
+  async generate(): Promise<string> {
+    const { v4: uuidv4 } = await import('uuid');
     return uuidv4();
   }
 }

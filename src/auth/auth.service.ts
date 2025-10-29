@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { isEmail } from 'class-validator';
 import { CryptographyService } from '../common/cryptography/cryptography.service';
 import { EmailService } from '../common/email/email.service';
@@ -38,8 +38,11 @@ export class AuthService {
     return isEmail(identifier) ? 'email' : 'username';
   }
 
-  private getJwtToken(payload: JwtPayload) {
-    return this.jwtService.sign(payload);
+  private getJwtToken(payload: JwtPayload, options?: JwtSignOptions) {
+    return this.jwtService.sign(payload, {
+      ...options,
+      secret: process.env.JWT_SECRET,
+    });
   }
 
   async requestPasswordRestore(dto: RequestPasswordRestoreDto) {
@@ -53,11 +56,9 @@ export class AuthService {
 
     if (!user) throw new UnauthorizedException();
 
-    await this.emailService.sendRestorePassword(user);
+    const token = this.getJwtToken({ id: user.id }, { expiresIn: '15m' });
 
-    return {
-      restoreToken: this.getJwtToken({ id: user.id }),
-    };
+    await this.emailService.sendRestorePassword({ user, token });
   }
 
   async restorePassword(dto: RestorePasswordDto) {
