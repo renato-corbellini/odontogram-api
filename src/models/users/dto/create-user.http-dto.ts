@@ -5,6 +5,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { IsUnique } from '../decorators';
 
 export class CreateUserHttpDto {
   // @IsString()
@@ -22,11 +23,13 @@ export class CreateUserHttpDto {
   @IsString()
   @MinLength(5)
   @IsEmail()
+  @IsUnique()
   readonly email: string;
 
   @IsString()
   @MinLength(5)
   @MaxLength(50)
+  @IsUnique()
   readonly username: string;
 
   @IsString()
