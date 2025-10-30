@@ -17,7 +17,7 @@ export class EmailService {
       html: `<h1>Restaurar Contraseña</h1>
       <p>Estimado usuario,</p>
       <p>Para restaurar su contraseña, haga click en el botón debajo.</p>
-      <a href="${process.env.BASE_URL}/restore-password?token=${token}" target="_blank" type='button'>Restaurar Contraseña</a>`,
+      <a href="http://localhost:4200/restore-password?token=${token}" target="_blank" type='button'>Restaurar Contraseña</a>`,
     };
 
     await this.send(emailOptions);

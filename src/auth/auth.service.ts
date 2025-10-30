@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { isEmail } from 'class-validator';
+import { User } from 'src/models/users/entities/user.entity';
 import { CryptographyService } from '../common/cryptography/cryptography.service';
 import { EmailService } from '../common/email/email.service';
 import { UsersService } from '../models/users/users.service';
@@ -32,6 +33,14 @@ export class AuthService {
     return {
       token: this.getJwtToken({ id: user.id }),
     };
+  }
+
+  async validate(user: User) {
+    const dbUser = await this.usersService.findByProperties({
+      id: user.id,
+    });
+
+    if (!dbUser) throw new UnauthorizedException();
   }
 
   private getPropertyToSearchBy(identifier: string) {

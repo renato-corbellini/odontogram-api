@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { Auth } from 'src/models/users/decorators';
 import { User } from 'src/models/users/entities/user.entity';
@@ -18,6 +18,13 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   create(@Body() dto: LoginHttpDto) {
     return this.authService.login(dto);
+  }
+
+  @Auth()
+  @Get('/validate-token')
+  @HttpCode(200)
+  validateToken(@GetUser() user: User) {
+    return this.authService.validate(user);
   }
 
   // Todo: decorator that searches user by identifier (email, username) and returns 401 if not found
